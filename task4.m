@@ -21,7 +21,8 @@ try, subImage = imread(inputImagePath); disp(['成功从以下路径加载图像
 catch, error('无法读取任务3的输出图像。请先成功运行任务3的脚本。'); end
 
 %% 步骤 1: 基础二值化
-binaryImageInitial = imbinarize(subImage, 'adaptive', 'ForegroundPolarity', 'bright', 'Sensitivity', 0.4);
+%%binaryImageInitial = imbinarize(subImage, 'adaptive', 'ForegroundPolarity', 'bright', 'Sensitivity', 0.6);
+binaryImageInitial = imbinarize(subImage, 0.6);
 
 %% =================== 新增：形态学修复步骤 ===================
 % 我们的字符是点阵式的，在二值化后很可能会断裂。
@@ -49,9 +50,9 @@ subplot(1, 3, 2);
 imshow(binaryImageClosed);
 title('步骤2: 形态学闭合 (笔画连接)');
 
-subplot(1, 3, 3);
-imshow(binaryImageHealed);
-title('步骤3: 孔洞填充 (字符完整)');
+%%subplot(1, 3, 3);
+%%imshow(binaryImageHealed);
+%%title('步骤3: 孔洞填充 (字符完整)');
 
 disp('结果图已显示，请查看修复过程。');
 
