@@ -1,97 +1,107 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% ME 5411 Computer Project - Script 6: Segment Characters (Improved)
-% Task 6: Segment the image to separate and label the different characters
-% as clearly as possible.
+% ME 5411 Computer Project - Script 6: Segment Characters (v5 - Final)
+% This version recalculates precise bounding boxes for split components.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% 初始化
-clear; 
-clc; 
-close all;
-disp('--- 开始执行任务 6 (改进版): 分割字符 ---');
+clear; clc; close all;
+disp('--- 开始执行任务 6 (最终优化版): 分割字符 ---');
 
-%% 定义输入和输出文件夹
+%% 定义文件夹路径
 inputDirTask5 = 'task5_output';
 inputDirTask3 = 'task3_output';
 outputDir = 'task6_output';
 outputDirChars = fullfile(outputDir, 'individual_characters');
+if ~exist(outputDir, 'dir'), mkdir(outputDir); end
+if ~exist(outputDirChars, 'dir'), mkdir(outputDirChars); end
+if exist(outputDirChars, 'dir'), delete(fullfile(outputDirChars, '*.png')); end
 
-if ~exist(outputDir, 'dir'), mkdir(outputDir); disp(['已创建文件夹: ', outputDir]); end
-if ~exist(outputDirChars, 'dir'), mkdir(outputDirChars); disp(['已创建子文件夹: ', outputDirChars]); end
-if exist(outputDirChars, 'dir'), delete(fullfile(outputDirChars, '*.png')); end % 清空旧文件
-
-%% 加载所需图像
+%% 加载图像
 inputImagePathBinary = fullfile(inputDirTask5, 'output_for_task6.png');
 try, binaryImage = imread(inputImagePathBinary); disp(['成功加载二值图像: ', inputImagePathBinary]);
-catch, error('无法读取任务5的输出图像。请先成功运行任务5的脚本。'); end
-
+catch, error('无法读取任务5的输出图像。'); end
 inputImagePathGray = fullfile(inputDirTask3, 'output_for_task4.png');
 try, subImageGray = imread(inputImagePathGray); disp(['成功加载灰度子图像: ', inputImagePathGray]);
-catch, error('无法读取任务3的输出图像。请先成功运行任务3的脚本。'); end
+catch, error('无法读取任务3的输出图像。'); end
 
-%% 使用 regionprops 获取所有区域的属性
-% 请求更多属性用于高级过滤
-stats = regionprops(binaryImage, 'BoundingBox', 'Area', 'Image', 'Solidity', 'Extent');
+%% 获取所有区域的属性并应用初级过滤
+statsInitial = regionprops(binaryImage, 'BoundingBox', 'Area', 'Image');
+filterParams.minArea = 1500;
+stats = statsInitial([statsInitial.Area] >= filterParams.minArea);
 
-% =================== 新增：高级过滤参数定义 ===================
-% ** 你可以调整这些参数来优化分割效果 **
-% 在你的报告中，可以详细讨论你如何选择这些参数以及它们的影响
-filterParams.minArea = 50;         % 最小面积
-filterParams.maxArea = 2000;       % 最大面积 (防止识别到粘连的巨大斑块)
-filterParams.minAspectRatio = 0.1; % 最小宽高比 (宽/高)
-filterParams.maxAspectRatio = 2.0; % 最大宽高比
-filterParams.minExtent = 0.25;      % 填充率 (对象面积/边界框面积)
-filterParams.minSolidity = 0.3;   % 坚实度 (对象面积/凸包面积)
+%% 智能切割逻辑
+mergedAspectRatioThreshold = 1.1;
+finalCharImages = {};
+finalBoundingBoxes = [];
 
-validObjects = []; % 用于存放通过所有测试的对象
-
-disp('正在应用高级几何过滤器...');
+disp('正在应用智能切割与精确边界框重算...');
 for i = 1:length(stats)
     bb = stats(i).BoundingBox;
-    aspectRatio = bb(3) / bb(4); % 计算宽高比
+    aspectRatio = bb(3) / bb(4);
     
-    % 检查所有条件
-    if stats(i).Area >= filterParams.minArea && ...
-       stats(i).Area <= filterParams.maxArea && ...
-       aspectRatio >= filterParams.minAspectRatio && ...
-       aspectRatio <= filterParams.maxAspectRatio && ...
-       stats(i).Extent >= filterParams.minExtent && ...
-       stats(i).Solidity >= filterParams.minSolidity
-   
-        validObjects = [validObjects; stats(i)];
+    if aspectRatio > mergedAspectRatioThreshold
+        disp(['检测到合并字符 (ID: ', num2str(i), ')，尝试切割...']);
+        mergedImage = stats(i).Image;
+        verticalProfile = sum(mergedImage, 1);
+        searchZoneStart = round(size(mergedImage, 2) * 0.4);
+        searchZoneEnd = round(size(mergedImage, 2) * 0.6);
+        [~, splitColumn] = min(verticalProfile(searchZoneStart:searchZoneEnd));
+        splitColumn = splitColumn + searchZoneStart - 1;
+        
+        char1_img = mergedImage(:, 1:splitColumn);
+        char2_img = mergedImage(:, (splitColumn+1):end);
+        
+        % =================== 新增：精确重算边界框 ===================
+        % 对切割出的第一个字符，重新计算其在自己小图框内的边界框
+        stats1 = regionprops(char1_img, 'BoundingBox');
+        if ~isempty(stats1)
+            % 将局部边界框转换为在原图上的全局边界框
+            bb1 = [bb(1) + stats1.BoundingBox(1) - 1, ...
+                   bb(2) + stats1.BoundingBox(2) - 1, ...
+                   stats1.BoundingBox(3), stats1.BoundingBox(4)];
+            finalCharImages{end+1} = char1_img;
+            finalBoundingBoxes = [finalBoundingBoxes; bb1];
+        end
+        
+        % 对切割出的第二个字符做同样操作
+        stats2 = regionprops(char2_img, 'BoundingBox');
+        if ~isempty(stats2)
+            bb2 = [bb(1) + splitColumn + stats2.BoundingBox(1) - 1, ...
+                   bb(2) + stats2.BoundingBox(2) - 1, ...
+                   stats2.BoundingBox(3), stats2.BoundingBox(4)];
+            finalCharImages{end+1} = char2_img;
+            finalBoundingBoxes = [finalBoundingBoxes; bb2];
+        end
+        % =================================================================
+        
+    else
+        finalCharImages{end+1} = stats(i).Image;
+        finalBoundingBoxes = [finalBoundingBoxes; bb];
     end
 end
-stats = validObjects; % 用过滤后的结果覆盖原始stats
-% =================================================================
 
-%% 按从左到右的顺序对过滤后的字符排序
-if ~isempty(stats)
-    [~, sortOrder] = sort(arrayfun(@(s) s.BoundingBox(1), stats));
-    stats = stats(sortOrder);
+%% 排序、可视化、保存 - 与之前版本相同
+if ~isempty(finalBoundingBoxes)
+    [~, sortOrder] = sort(finalBoundingBoxes(:, 1));
+    finalBoundingBoxes = finalBoundingBoxes(sortOrder, :);
+    finalCharImages = finalCharImages(sortOrder);
 end
 
-%% 可视化分割结果并保存单个字符
-hFig = figure('Name', 'Task 6: Improved Segmentation Result', 'NumberTitle', 'off');
-imshow(subImageGray);
-hold on;
-
-disp(['过滤后找到 ', num2str(length(stats)), ' 个有效字符，正在逐个保存...']);
-for k = 1:length(stats)
-    bb = stats(k).BoundingBox;
+hFig = figure('Name', 'Task 6: Final Segmentation (Precise BBox)', 'NumberTitle', 'off');
+imshow(subImageGray); hold on;
+disp(['分割完成，共得到 ', num2str(length(finalCharImages)), ' 个字符，正在逐个保存...']);
+for k = 1:length(finalCharImages)
+    bb = finalBoundingBoxes(k, :);
     rectangle('Position', bb, 'EdgeColor', 'r', 'LineWidth', 2);
     text(bb(1), bb(2)-10, num2str(k), 'Color', 'cyan', 'FontSize', 12);
-    charImage = stats(k).Image;
-    charImagePadded = padarray(charImage, [4 4], 0, 'both');
+    charImagePadded = padarray(finalCharImages{k}, [4 4], 0, 'both');
     charFilename = sprintf('char_%02d.png', k);
     imwrite(charImagePadded, fullfile(outputDirChars, charFilename));
 end
 hold off;
-title(['分割出的 ', num2str(length(stats)), ' 个字符 (已过滤)']);
-disp('结果图已显示，请查看。');
+title(['最终分割出 ', num2str(length(finalCharImages)), ' 个字符']);
 
 %% 保存最终结果
-figurePath = fullfile(outputDir, 'segmentation_result_filtered.png');
+figurePath = fullfile(outputDir, 'segmentation_result_final_precise.png');
 saveas(hFig, figurePath);
-disp(['改进后的分割结果图已保存到: ', figurePath]);
-disp(['所有单个字符图像已保存到: ', outputDirChars]);
-disp('--- 任务 6 (改进版) 完成 ---');
+disp('--- 任务 6 (最终优化版) 完成 ---');
