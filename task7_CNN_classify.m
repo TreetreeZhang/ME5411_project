@@ -11,6 +11,8 @@ for i = 1:10
     imgPath = sprintf('%s%02d.png', path, i);
     disp(imgPath);
     img = imread(imgPath);
+
+    %根据分割图实际size对宽度进行填充，防止resize后比例改变
     [height, width] = size(img);
     padding = floor((height - width) / 2);
     img = padarray(img, [0 padding], 0, 'both');
