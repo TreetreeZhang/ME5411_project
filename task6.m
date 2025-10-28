@@ -1,13 +1,10 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% ME 5411 Computer Project - Script 6: Segment Characters (v5 - Final)
-% This version recalculates precise bounding boxes for split components.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Task 6
 
-%% 初始化
+%% Initialization
 clear; clc; close all;
-disp('--- 开始执行任务 6 (最终优化版): 分割字符 ---');
+disp('--- Start Task 6 ---');
 
-%% 定义文件夹路径
+%% Define folder paths
 inputDirTask5 = 'task5_output';
 inputDirTask3 = 'task3_output';
 outputDir = 'task6_output';
@@ -16,31 +13,39 @@ if ~exist(outputDir, 'dir'), mkdir(outputDir); end
 if ~exist(outputDirChars, 'dir'), mkdir(outputDirChars); end
 if exist(outputDirChars, 'dir'), delete(fullfile(outputDirChars, '*.png')); end
 
-%% 加载图像
+%% Load images
 inputImagePathBinary = fullfile(inputDirTask5, 'output_for_task6.png');
-try, binaryImage = imread(inputImagePathBinary); disp(['成功加载二值图像: ', inputImagePathBinary]);
-catch, error('无法读取任务5的输出图像。'); end
+try
+    binaryImage = imread(inputImagePathBinary);
+    disp(['Binary image successfully loaded from: ', inputImagePathBinary]);
+catch
+    error('Failed to read the output image from Task 5.');
+end
 inputImagePathGray = fullfile(inputDirTask3, 'output_for_task4.png');
-try, subImageGray = imread(inputImagePathGray); disp(['成功加载灰度子图像: ', inputImagePathGray]);
-catch, error('无法读取任务3的输出图像。'); end
+try
+    subImageGray = imread(inputImagePathGray);
+    disp(['Grayscale sub-image successfully loaded from: ', inputImagePathGray]);
+catch
+    error('Failed to read the output image from Task 3.');
+end
 
-%% 获取所有区域的属性并应用初级过滤
+%% Get properties of all regions and apply initial filtering
 statsInitial = regionprops(binaryImage, 'BoundingBox', 'Area', 'Image');
-filterParams.minArea = 1500;
-stats = statsInitial([statsInitial.Area] >= filterParams.minArea);
+minArea = 1500;
+stats = statsInitial([statsInitial.Area] >= minArea);
 
-%% 智能切割逻辑
+%% Intelligent splitting logic
 mergedAspectRatioThreshold = 1.1;
 finalCharImages = {};
 finalBoundingBoxes = [];
 
-disp('正在应用智能切割与精确边界框重算...');
+disp('Applying intelligent splitting and recalculating precise bounding boxes...');
 for i = 1:length(stats)
     bb = stats(i).BoundingBox;
     aspectRatio = bb(3) / bb(4);
     
     if aspectRatio > mergedAspectRatioThreshold
-        disp(['检测到合并字符 (ID: ', num2str(i), ')，尝试切割...']);
+        disp(['Merged characters detected (ID: ', num2str(i), '), attempting to split...']);
         mergedImage = stats(i).Image;
         verticalProfile = sum(mergedImage, 1);
         searchZoneStart = round(size(mergedImage, 2) * 0.4);
@@ -51,19 +56,18 @@ for i = 1:length(stats)
         char1_img = mergedImage(:, 1:splitColumn);
         char2_img = mergedImage(:, (splitColumn+1):end);
         
-        % =================== 新增：精确重算边界框 ===================
-        % 对切割出的第一个字符，重新计算其在自己小图框内的边界框
+        % Recalculate the bounding box for the first split character
         stats1 = regionprops(char1_img, 'BoundingBox');
         if ~isempty(stats1)
-            % 将局部边界框转换为在原图上的全局边界框
+            % Convert local bounding box to global coordinates in the original image
             bb1 = [bb(1) + stats1.BoundingBox(1) - 1, ...
                    bb(2) + stats1.BoundingBox(2) - 1, ...
                    stats1.BoundingBox(3), stats1.BoundingBox(4)];
             finalCharImages{end+1} = char1_img;
             finalBoundingBoxes = [finalBoundingBoxes; bb1];
         end
-        
-        % 对切割出的第二个字符做同样操作
+
+        % Recalculate for the second split character
         stats2 = regionprops(char2_img, 'BoundingBox');
         if ~isempty(stats2)
             bb2 = [bb(1) + splitColumn + stats2.BoundingBox(1) - 1, ...
@@ -72,24 +76,23 @@ for i = 1:length(stats)
             finalCharImages{end+1} = char2_img;
             finalBoundingBoxes = [finalBoundingBoxes; bb2];
         end
-        % =================================================================
-        
+
     else
         finalCharImages{end+1} = stats(i).Image;
         finalBoundingBoxes = [finalBoundingBoxes; bb];
     end
 end
 
-%% 排序、可视化、保存 - 与之前版本相同
+%% Sorting, visualization, and saving — same as before
 if ~isempty(finalBoundingBoxes)
     [~, sortOrder] = sort(finalBoundingBoxes(:, 1));
     finalBoundingBoxes = finalBoundingBoxes(sortOrder, :);
     finalCharImages = finalCharImages(sortOrder);
 end
 
-hFig = figure('Name', 'Task 6: Final Segmentation (Precise BBox)', 'NumberTitle', 'off');
+hFig = figure('Name', 'Task 6', 'NumberTitle', 'off');
 imshow(subImageGray); hold on;
-disp(['分割完成，共得到 ', num2str(length(finalCharImages)), ' 个字符，正在逐个保存...']);
+disp(['Segmentation completed, ', num2str(length(finalCharImages)), ' characters obtained. Saving each image...']);
 for k = 1:length(finalCharImages)
     bb = finalBoundingBoxes(k, :);
     rectangle('Position', bb, 'EdgeColor', 'r', 'LineWidth', 2);
@@ -99,9 +102,8 @@ for k = 1:length(finalCharImages)
     imwrite(charImagePadded, fullfile(outputDirChars, charFilename));
 end
 hold off;
-title(['最终分割出 ', num2str(length(finalCharImages)), ' 个字符']);
 
-%% 保存最终结果
-figurePath = fullfile(outputDir, 'segmentation_result_final_precise.png');
+%% Save final results
+figurePath = fullfile(outputDir, 'segmentation_result.png');
 saveas(hFig, figurePath);
-disp('--- 任务 6 (最终优化版) 完成 ---');
+disp('--- Task 6 Completed ---');
