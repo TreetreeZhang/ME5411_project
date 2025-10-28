@@ -1,53 +1,48 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% ME 5411 Computer Project - Script 3: Create Sub-image
-% Task 3: Create a sub-image that includes the line - HD44780A00.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Task 3
 
-%% 初始化
+%% Initialization
 clear; 
 clc; 
 close all;
-disp('--- 开始执行任务 3: 创建子图像 ---');
+disp('--- Start Task 3 ---');
 
-%% 定义输入和输出文件夹
+%% Define input and output folders
 inputDir = 'task2_output';
 outputDir = 'task3_output';
 if ~exist(outputDir, 'dir')
     mkdir(outputDir);
-    disp(['已创建文件夹: ', outputDir]);
+    disp(['Folder created: ', outputDir]);
 end
 
-%% 加载任务2的输出图像
+%% Load the output image from Task 2
 inputImagePath = fullfile(inputDir, 'output_for_task3.png');
 try
     smoothedImage = imread(inputImagePath);
-    disp(['成功从以下路径加载图像: ', inputImagePath]);
+    disp(['Image successfully loaded from: ', inputImagePath]);
 catch
-    error('无法读取任务2的输出图像。请先成功运行任务2脚本。');
+    error('Failed to read the output image from Task 2. Please make sure Task 2 has been successfully executed.');
 end
 
-%% 裁剪子图像
-% 定义裁剪区域: rect = [xmin ymin width height]
-% 注意: 这里的 [1, 100, size(smoothedImage, 2), 90] 是基于图像的估算值。
-% 如果裁剪结果不理想，你可以微调 ymin 和 height 的值。
+%% Crop the sub-image
+% Define the cropping area
 cropRect = [1, 200, size(smoothedImage, 2), 135]; 
 subImage = imcrop(smoothedImage, cropRect);
 
-%% 显示并保存结果
-% 创建一个图形窗口用于显示
-hFig = figure('Name', 'Task 3: Cropped Sub-image', 'NumberTitle', 'off');
+%% Display and save the result
+% Create a figure window for display
+hFig = figure('Name', 'Task 3', 'NumberTitle', 'off');
 imshow(subImage);
-title('裁剪出的子图像: HD44780A00');
-disp('结果图已显示，请查看。');
+title('Cropped Sub-image: HD44780A00');
+disp('The result image has been displayed. Please check.');
 
-% 保存figure
+% Save the figure
 figurePath = fullfile(outputDir, 'cropped_image_figure.png');
 saveas(hFig, figurePath);
-disp(['裁剪结果图已保存到: ', figurePath]);
+disp(['Cropped result figure saved to: ', figurePath]);
 
-% 保存裁剪后的图像数据，并命名为任务4的输入
+% Save the cropped image as input for the next task
 outputImagePath = fullfile(outputDir, 'output_for_task4.png');
 imwrite(subImage, outputImagePath);
-disp(['用于下一步的子图像已保存到: ', outputImagePath]);
+disp(['Sub-image saved for the next task: ', outputImagePath]);
 
-disp('--- 任务 3 完成 ---');
+disp('--- Task 3 Completed ---');
