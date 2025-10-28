@@ -1,79 +1,83 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% ME 5411 Computer Project - Script 4: Binarize Sub-image (v2 - Healing)
-% Task 4: Convert the sub-image from Step 3 into a binary image,
-%         and apply morphological operations to heal broken characters.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Task 4
 
-%% 初始化
+%% Initialization
 clear; 
 clc; 
 close all;
-disp('--- 开始执行任务 4 (修复版): 图像二值化与字符修复 ---');
+disp('--- Start Task 4 ---');
 
-%% 定义输入和输出文件夹
+%% Define input and output folders
 inputDir = 'task3_output';
 outputDir = 'task4_output';
-if ~exist(outputDir, 'dir'), mkdir(outputDir); disp(['已创建文件夹: ', outputDir]); end
+if ~exist(outputDir, 'dir')
+    mkdir(outputDir);
+    disp(['Folder created: ', outputDir]);
+end
 
-%% 加载任务3的输出图像
+%% Load the output image from Task 3
 inputImagePath = fullfile(inputDir, 'output_for_task4.png');
-try, subImage = imread(inputImagePath); disp(['成功从以下路径加载图像: ', inputImagePath]);
-catch, error('无法读取任务3的输出图像。请先成功运行任务3的脚本。'); end
+try
+    subImage = imread(inputImagePath);
+    disp(['Image successfully loaded from: ', inputImagePath]);
+catch
+    error('Failed to read the output image from Task 3. Please make sure Task 3 has been successfully executed.');
+end
 
-%% 步骤 1: 基础二值化
-%%binaryImageInitial = imbinarize(subImage, 'adaptive', 'ForegroundPolarity', 'bright', 'Sensitivity', 0.6);
-% binaryImageInitial = imbinarize(subImage, 0.6);
+%% Binarization
+% Method 1: Adaptive thresholding
+binaryImageAdaptive = imbinarize(subImage, 'adaptive');
+
+% Method 2: Fixed thresholding
+binaryImageManual = imbinarize(subImage, 0.6);
+
+% Method 3: Global automatic thresholding
 level = graythresh(subImage); 
-disp(level)
-binaryImageInitial = imbinarize(subImage, level);
-% subplot(1,2,1)
-% imshow(binaryImageInitial)
-% subplot(1,2,2)
-% imshow(binaryImageInitial_1)
+binaryImageGlobal = imbinarize(subImage, level);
 
-%% =================== 新增：形态学修复步骤 ===================
-% 我们的字符是点阵式的，在二值化后很可能会断裂。
-% 我们需要用形态学操作将它们重新连接起来。
+imwrite(binaryImageAdaptive, fullfile(outputDir, 'binary_image_adaptive.png'));
+disp('Saved the image processed with adaptive thresholding.');
 
-% 步骤 1：去噪 (Open)
-% 去除图片中的噪点
+imwrite(binaryImageManual, fullfile(outputDir, 'binary_image_manual.png'));
+disp('Saved the image processed with fixed thresholding.');
+
+imwrite(binaryImageGlobal, fullfile(outputDir, 'binary_image_global.png'));
+disp('Saved the image processed with global automatic thresholding.');
+
+%% Denoising
+
+% Create structural element
 se = strel('disk', 3);
-binaryImageDenoised = imopen(binaryImageInitial, se);
+binaryImageDenoised = imopen(binaryImageGlobal, se);
 
-% 步骤 2: 形态学闭合 (Closing)
-% "闭合"操作可以连接邻近的白色区域，非常适合修复断裂的笔画。
-% 我们使用一个较小的"线状"结构元素，主要在水平方向上连接。
-se = strel('line', 5, 0); % 创建一个长度为3，角度为0（水平）的线状结构元素
-binaryImageClosed = imclose(binaryImageDenoised, se);
+imwrite(binaryImageDenoised, fullfile(outputDir, 'binary_image_denoised.png'));
 
-% =================================================================
+%% Display and save results
+hFig = figure('Name', 'Task 4', 'NumberTitle', 'off');
 
-%% 显示并保存结果
-hFig = figure('Name', 'Task 4: Binarization and Healing Process', 'NumberTitle', 'off');
-
-subplot(1, 3, 1);
-imshow(binaryImageInitial)
-title('步骤1：初始二值化 (字符破碎)')
-
-subplot(1, 3, 2);
+subplot(1, 4, 1);
+imshow(binaryImageAdaptive);
+title('Adaptive Thresholding');
+subplot(1, 4, 2);
+imshow(binaryImageManual);
+title('Fixed Thresholding');
+subplot(1, 4, 3);
+imshow(binaryImageGlobal);
+title('Global Automatic Thresholding');
+subplot(1, 4, 4);
 imshow(binaryImageDenoised);
-title('步骤2: 去噪');
+title('Denoised Global Threshold Result');
 
-subplot(1, 3, 3);
-imshow(binaryImageClosed);
-title('步骤3: 形态学闭合 (笔画连接)');
+disp('The result images have been displayed.');
 
-disp('结果图已显示，请查看修复过程。');
-
-%% 保存最终的、修复好的二值图像
-% 保存对比figure
-figurePath = fullfile(outputDir, 'binarization_healing_process.png');
+%% Save the final binary image
+% Save the comparison figure
+figurePath = fullfile(outputDir, 'binarization_process.png');
 saveas(hFig, figurePath);
-disp(['二值化修复过程图已保存到: ', figurePath]);
+disp(['Binarization process figure saved to: ', figurePath]);
 
-% 保存最终修复好的二值图像，供任务5使用
+% Save the final denoised binary image for Task 5
 outputImagePath = fullfile(outputDir, 'output_for_task5.png');
-imwrite(binaryImageClosed, outputImagePath);
-disp(['修复后的二值图像已保存到: ', outputImagePath]);
+imwrite(binaryImageDenoised, outputImagePath);
+disp(['Final binary image saved to: ', outputImagePath]);
 
-disp('--- 任务 4 (修复版) 完成 ---');
+disp('--- Task 4 Completed ---');
