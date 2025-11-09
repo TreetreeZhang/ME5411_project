@@ -39,12 +39,12 @@ layers = [
     flattenLayer('Name', 'flatten')
 
     % 全连接层1
-    fullyConnectedLayer(512, 'Name', 'fc1')
+    fullyConnectedLayer(256, 'Name', 'fc1')
     reluLayer('Name', 'relu1')
     dropoutLayer(0.5, 'Name', 'dropout1')
 
     % 全连接层2
-    fullyConnectedLayer(256, 'Name', 'fc2')
+    fullyConnectedLayer(128, 'Name', 'fc2')
     reluLayer('Name', 'relu2')
     dropoutLayer(0.5, 'Name', 'dropout2')
 
@@ -80,3 +80,7 @@ YTest = imdsTest.Labels;
 % 计算准确率
 accuracy = sum(YPred == YTest) / numel(YTest);
 disp(['测试集准确率: ', num2str(accuracy * 100), '%']);
+
+plotconfusion(imdsTest.Labels, YPred);
+title('Confusion Matrix(MLP)');
+saveas(gcf, 'MLP_confusion_matrix.png');
