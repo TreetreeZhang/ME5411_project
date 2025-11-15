@@ -34,6 +34,6 @@ for i = 1:10
     categories = {'0', '4', '7', '8', 'A', 'D', 'H'};
     set(gca, 'XTick', 1:length(scores));
     set(gca, 'XTickLabel', categories);
-    outputFilename = fullfile(outputFolder, sprintf('CNN_classify_result_%02d.png', i));
+    outputFilename = fullfile(outputFolder, sprintf('MLP_classify_result_%02d.png', i));
     saveas(fig, outputFilename);
 end

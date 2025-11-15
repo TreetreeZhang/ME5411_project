@@ -45,7 +45,7 @@ layers = [
     reluLayer('Name', 'relu2')
     maxPooling2dLayer(2, 'Stride', 2, 'Name', 'maxpool2')
     
-    convolution2dLayer(3, 128, 'Padding', 'same', 'Name', 'conv3')
+    convolution2dLayer(3, 64, 'Padding', 'same', 'Name', 'conv3')
     batchNormalizationLayer('Name', 'bn3')
     reluLayer('Name', 'relu3')
     
@@ -84,3 +84,7 @@ YTest = imdsTest.Labels;
 % 计算准确率
 accuracy = sum(YPred == YTest) / numel(YTest);
 disp(['测试集准确率: ', num2str(accuracy * 100), '%']);
+
+plotconfusion(imdsTest.Labels, YPred);
+title('Confusion Matrix(CNN)');
+saveas(gcf, 'CNN_confusion_matrix.png');
